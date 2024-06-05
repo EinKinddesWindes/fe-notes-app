@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { CreateNote, NotesList } from '@/components/Notes';
+import { CreateNote, NotesAISummary, NotesList } from '@/components/Notes';
 
 const SchoolNotes = () => {
   const [notes, setNotes] = useState([]);
@@ -20,6 +20,7 @@ const SchoolNotes = () => {
     <>
       <NotesList notes={notes} />
       <CreateNote setNotes={setNotes} />
+      <NotesAISummary />
     </>
   );
 };
