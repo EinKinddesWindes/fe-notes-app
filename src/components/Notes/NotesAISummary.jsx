@@ -1,39 +1,54 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import axios from 'axios';
 
-const NotesAISummary = () => {
+const NotesAISummary = ({ notes }) => {
   const modalRef = useRef();
+  const [aiNotes, setAiNotes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleGenAI = async () => {
-    let stream = true;
-
-    const response = await axios.post(
-      `${import.meta.env.VITE_PROXY_OPENAI}/api/v1/chat/completions`,
-      {
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant.'
+    try {
+      setLoading(true);
+      let stream = true;
+      const response = await axios.post(
+        `${import.meta.env.VITE_PROXY_OPENAI}/api/v1/chat/completions`,
+        {
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a student in a coding bootcamp. You will receive some notes about topics reviewed in class and you will summarise them and return a bullet list. Respond with a  JSON array with objects with a title and summary properties '
+            },
+            {
+              role: 'user',
+              content: JSON.stringify(notes)
+            }
+          ],
+          response_format: {
+            type: 'json_object'
+          },
+          model: 'gpt-3.5-turbo',
+          stream
+        },
+        {
+          headers: {
+            provider: 'open-ai',
+            mode: 'production'
           }
-        ],
-        model: 'gpt-4o',
-        stream
-      },
-      {
-        responseType: 'stream',
-        headers: {
-          provider: 'open-ai',
-          mode: 'development'
         }
-      }
-    );
+      );
 
-    if (stream) {
-      for await (const chunk of response.data) {
-        console.log(chunk);
+      if (stream) {
+        for await (const chunk of response.data) {
+          console.log(chunk);
+        }
+      } else {
+        setAiNotes(JSON.parse(response.data?.message.content).topics || []);
       }
-    } else {
-      console.log(response.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,15 +71,32 @@ const NotesAISummary = () => {
             </form>
           </div>
           <div className='flex flex-col items-center gap-3'>
-            <textarea
-              className='textarea textarea-success w-full h-[300px]'
+            <div
+              className='textarea textarea-success w-full h-[300px] overflow-y-scroll'
               placeholder='Magic happens here...'
-            ></textarea>
+            >
+              {aiNotes.map(n => {
+                return (
+                  <div key={n.title}>
+                    <h2 className='text-lg font-bold'>{n.title}</h2>
+                    <p>{n.summary}</p>
+                  </div>
+                );
+              })}
+            </div>
             <button
               className='btn bg-purple-500 hover:bg-purple-400 text-white'
               onClick={handleGenAI}
+              disabled={loading}
             >
-              Gen AI thingy
+              {loading ? (
+                <>
+                  <span className='loading loading-spinner'></span>
+                  Generating summary
+                </>
+              ) : (
+                'Gen AI summary ✨'
+              )}
             </button>
           </div>
         </div>
