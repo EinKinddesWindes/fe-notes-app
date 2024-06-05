@@ -1,49 +1,83 @@
 import { useRef, useState } from 'react';
-import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 
 const NotesAISummary = ({ notes }) => {
   const modalRef = useRef();
-  const [aiNotes, setAiNotes] = useState([]);
+  const resultsRef = useRef();
+  const [stream, setStream] = useState(false);
+  const [aiNotes, setAiNotes] = useState('Generate your summary');
   const [loading, setLoading] = useState(false);
 
   const handleGenAI = async () => {
     try {
       setLoading(true);
-      let stream = true;
-      const response = await axios.post(
-        `${import.meta.env.VITE_PROXY_OPENAI}/api/v1/chat/completions`,
-        {
+      setAiNotes('');
+      const response = await fetch(`${import.meta.env.VITE_PROXY_OPENAI}/api/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          mode: 'production',
+          provider: 'open-ai'
+        },
+        body: JSON.stringify({
           messages: [
             {
               role: 'system',
               content:
-                'You are a student in a coding bootcamp. You will receive some notes about topics reviewed in class and you will summarise them and return a bullet list. Respond with a  JSON array with objects with a title and summary properties '
+                'You are an instructor in a coding bootcamp. You will receive some notes about topics reviewed in class and you will summarise them and return a bullet list. Respond with markdown using the title of each note as a header and the summary as a bullet list with your own words plus useful advice.'
             },
             {
               role: 'user',
               content: JSON.stringify(notes)
             }
           ],
-          response_format: {
-            type: 'json_object'
-          },
           model: 'gpt-3.5-turbo',
           stream
-        },
-        {
-          headers: {
-            provider: 'open-ai',
-            mode: 'production'
-          }
-        }
-      );
+        })
+      });
 
       if (stream) {
-        for await (const chunk of response.data) {
-          console.log(chunk);
+        // Get the response as a stream
+        const reader = response.body.getReader();
+        // Create a new TextDecoder
+        const decoder = new TextDecoder('utf-8');
+        // Read the stream
+        let result = '';
+        // While the stream is not closed
+        while (!(result = await reader.read()).done) {
+          // Decode the result
+          const chunk = decoder.decode(result.value, { stream });
+          // Split lines by new line
+          const lines = chunk.split('\n');
+          // Loop through each line
+          lines.forEach(line => {
+            // Check if the line starts with data:
+            if (line.startsWith('data:')) {
+              // Get the JSON string without the data: prefix
+              const jsonStr = line.replace('data:', '');
+              // Parse the JSON string
+              const data = JSON.parse(jsonStr);
+              // Get the content from the first choice
+              const content = data.choices[0]?.delta?.content;
+              // If there is content
+              if (content) {
+                // Update the state
+                setAiNotes(prev => {
+                  return prev + content;
+                });
+                // Scroll to the bottom
+                resultsRef.current.scrollTop = resultsRef.current.scrollHeight;
+              }
+            }
+          });
         }
       } else {
-        setAiNotes(JSON.parse(response.data?.message.content).topics || []);
+        // Get the response as JSON
+        const data = await response.json();
+        // Update the state
+        setAiNotes(data.message?.content);
+        // Scroll to the bottom
+        resultsRef.current.scrollTop = resultsRef.current.scrollHeight;
       }
     } catch (e) {
       console.error(e);
@@ -63,29 +97,34 @@ const NotesAISummary = ({ notes }) => {
         </button>
       </div>
       <dialog id='modal-note' className='modal' ref={modalRef}>
-        <div className='modal-box h-[500px]'>
-          <div className='modal-action justify-between mb-2'>
+        <div className='modal-box h-[600px] py-0'>
+          <div className='modal-action items-center justify-between mb-2'>
             <h1 className='text-2xl text-center'>Get AI Gen summary</h1>
+            <label htmlFor='Stream?' className='flex items-center gap-1'>
+              Stream?
+              <input
+                disabled={loading}
+                id='Stream?'
+                type='checkbox'
+                className='toggle toggle-error'
+                checked={stream}
+                onChange={() => setStream(p => !p)}
+              />
+            </label>
+
             <form method='dialog'>
               <button className='btn'>&times;</button>
             </form>
           </div>
           <div className='flex flex-col items-center gap-3'>
             <div
-              className='textarea textarea-success w-full h-[300px] overflow-y-scroll'
-              placeholder='Magic happens here...'
+              className='textarea textarea-success w-full h-[400px] overflow-y-scroll'
+              ref={resultsRef}
             >
-              {aiNotes.map(n => {
-                return (
-                  <div key={n.title}>
-                    <h2 className='text-lg font-bold'>{n.title}</h2>
-                    <p>{n.summary}</p>
-                  </div>
-                );
-              })}
+              <ReactMarkdown>{aiNotes}</ReactMarkdown>
             </div>
             <button
-              className='btn bg-purple-500 hover:bg-purple-400 text-white'
+              className='mt-5 btn bg-purple-500 hover:bg-purple-400 text-white'
               onClick={handleGenAI}
               disabled={loading}
             >
