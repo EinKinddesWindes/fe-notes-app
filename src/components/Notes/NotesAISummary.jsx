@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 const NotesAISummary = ({ notes }) => {
@@ -7,6 +7,10 @@ const NotesAISummary = ({ notes }) => {
   const [stream, setStream] = useState(false);
   const [aiNotes, setAiNotes] = useState('Generate your summary');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    resultsRef.current.scrollTo(0, resultsRef.current.scrollHeight);
+  }, [aiNotes]);
 
   const handleGenAI = async () => {
     try {
@@ -76,8 +80,6 @@ const NotesAISummary = ({ notes }) => {
         const data = await response.json();
         // Update the state
         setAiNotes(data.message?.content);
-        // Scroll to the bottom
-        resultsRef.current.scrollTop = resultsRef.current.scrollHeight;
       }
     } catch (e) {
       console.error(e);
