@@ -42,7 +42,8 @@ const CreateNote = ({ setNotes }) => {
       </div>
       <dialog id='modal-note' className='modal' ref={modalRef}>
         <div className='modal-box h-[500px]'>
-          <div className='modal-action mb-2'>
+          <div className='modal-action justify-between mb-2'>
+            <h1 className='text-2xl text-center'>Create a new note</h1>
             <form method='dialog'>
               <button className='btn'>&times;</button>
             </form>
