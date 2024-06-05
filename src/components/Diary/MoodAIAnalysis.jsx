@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Charts } from '@/components/Diary';
 
 const MoodAIAnalysis = ({ entries }) => {
   const modalRef = useRef();
@@ -75,7 +76,7 @@ const MoodAIAnalysis = ({ entries }) => {
               <ReactMarkdown>{aiSummary}</ReactMarkdown>
             </div>
             <div className='textarea textarea-success w-1/2 h-[400px] overflow-y-scroll'>
-              Chart goes here
+              <Charts aiSummary={aiSummary} />
             </div>
           </div>
           <div className='flex justify-center'>
